@@ -31,6 +31,7 @@
 
 ;;; Code:
 
+(require 'dash)
 (require 'json)
 
 (defcustom sway-swaymsg-binary (executable-find "swaymsg")
@@ -96,21 +97,23 @@ of (FRAME-OBJECT . SWAY-ID)"
 Return either nil if there's none, or a pair of (FRAME-OBJECT
 . SWAY-ID)"
   (cl-some (lambda (f)
-             (when (sway-frame-displays-buffer-p (car f) buffer)
-               f))
+             (and (sway-frame-displays-buffer-p (car f) buffer) f))
            (sway-find-frames (sway-tree) visible-only)))
-
 
 (defun sway-shackle-display-buffer-frame (buffer alist plist)
   "Show BUFFER in a new Emacs frame, unless one is already
   visible on current workspace"
-  (message "Got %s for %s (bufferp? %s)" (sway-find-frame-for-buffer buffer t) buffer (bufferp buffer))
-  (if-let ((f (sway-find-frame-for-buffer buffer t)))
-      (let ((frame (funcall pop-up-frame-function)))
-        (shackle--window-display-buffer
-         buffer  (frame-selected-window frame) 'frame alist))))
-
-;;(sway-find-frame-for-buffer (get-file-buffer (expand-file-name "~/.emacs.d/init.el")) t)
+  (let* ((sway (sway-find-frame-for-buffer buffer t))
+         (frame (or (car sway)
+                    ;; cons: to get the same format (FRAME . SWAY-ID)
+                    (funcall pop-up-frame-function))))
+    ;; Display buffer if frame doesn't already.
+    (set-window-buffer (frame-selected-window frame) buffer)
+    ;; @FIXME This ^^^ ignores the case where the existing frame found
+    ;; in Sway tree displays BUFFER in a non-selected window.
+    (when sway ;; @FIXME Handle conditional focus
+      (call-process sway-swaymsg-binary nil nil nil (format sway-focus-message-format (cdr sway))))
+    (frame-selected-window frame)))
 
 (provide 'sway)
 

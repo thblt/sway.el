@@ -1,9 +1,11 @@
 #+TITLE: Sway ❤ Emacs
 
-This package provides an partial interface for integrating sway from
-within Emacs.  It is meant for those Emacs users who prefer to let
-their window manager deal with window management, and is designed to
-play well with Shackle.
+This package provides a partial interface for integrating Sway with
+Emacs.  It is meant for those Emacs users who prefer to let their
+window manager deal with window management, and is designed to play
+well with Shackle.
+
+
 
 This requires an Emacs with (preferably native) JSON parsing.  Your
 Emacs is built with native JSON iff =C-h f= reports that the function
