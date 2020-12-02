@@ -115,7 +115,8 @@ Return either nil if there's none, or a pair of (FRAME-OBJECT
     ;; @FIXME This ^^^ ignores the case where the existing frame found
     ;; in Sway tree displays BUFFER in a non-selected window.
     (when sway ;; @FIXME Handle conditional focus
-      (call-process sway-swaymsg-binary nil nil nil (format sway-focus-message-format (cdr sway))))
+      (let ((process-environment (frame-parameter (or frame (selected-frame)) 'environment)))
+        (call-process sway-swaymsg-binary nil nil nil (format sway-focus-message-format (cdr sway)))))
     (frame-selected-window frame)))
 
 (provide 'sway)
