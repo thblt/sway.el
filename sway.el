@@ -41,18 +41,13 @@
   "The format of the message to send to swaymsh to focus a
   window.")
 
-(defun sway-get-socket (&optional frame)
-  "Find Sway socket for FRAME.
+(defun sway-tree (&optional frame)
+  "Get the Sway tree as an elisp object, using environment of FRAME.
 
-If FRAME is nil, use (selected-frame)"
-  (when-let (def (cl-some (lambda (c) (when (string-prefix-p "SWAYSOCK=" c) c))
-                          (frame-parameter (or frame (selected-frame)) 'environment)))
-    (substring def 9)))
-
-(defun sway-tree ()
-  "Get the Sway tree as an elisp object."
+If FRAME is nil, use the value of (selected-frame)."
   (with-temp-buffer
-    (call-process sway-swaymsg-binary nil (current-buffer) nil "-s" (sway-get-socket) "-t" "get_tree")
+    (let ((process-environment (frame-parameter (or frame (selected-frame)) 'environment)))
+      (call-process sway-swaymsg-binary nil (current-buffer) nil "-t" "get_tree"))
     (goto-char (point-min))
     (json-parse-buffer :null-object nil :false-object nil)))
 
