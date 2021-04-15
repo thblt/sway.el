@@ -3,12 +3,18 @@
 This package provides a partial interface for integrating Sway with
 Emacs.  It is meant for those Emacs users who prefer to let their
 window manager deal with window management, and is designed to play
-well with Shackle.
+well with [[https://depp.brause.cc/shackle/][Shackle]].
 
+Its only directly usable feature right now is the
+sway-shackle-display-buffer-frame, which eithers creates a new frame
+with a given buffer or focus that buffer in the frame it's already
+displayed on.  A reasonable default config with Shackle could look like:
 
+#+begin_src elisp
+  (setq shackle-default-rule '(:frame t)
+        shackle-display-buffer-frame-function 'sway-shackle-display-buffer-frame)
+#+end_src
 
-This requires an Emacs with (preferably native) JSON parsing.  Your
-Emacs is built with native JSON iff =C-h f= reports that the function
-=json-parse-buffer= is implemented in C.
-
-* Implementation
+This package requires an Emacs with (preferably native) JSON support.
+Your Emacs is built with native JSON iff =C-h f= reports that the
+function =json-parse-buffer= is implemented in C.
