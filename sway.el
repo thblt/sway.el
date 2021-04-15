@@ -46,7 +46,7 @@
 
 If FRAME is nil, use the value of (selected-frame)."
   (with-temp-buffer
-    (let ((process-environment (frame-parameter (or frame (selected-frame)) 'environment)))
+    (let ((process-environment (frame-parameter frame 'environment)))
       (call-process sway-swaymsg-binary nil (current-buffer) nil "-t" "get_tree"))
     (goto-char (point-min))
     (json-parse-buffer :null-object nil :false-object nil)))
@@ -115,7 +115,7 @@ Return either nil if there's none, or a pair of (FRAME-OBJECT
     ;; @FIXME This ^^^ ignores the case where the existing frame found
     ;; in Sway tree displays BUFFER in a non-selected window.
     (when sway ;; @FIXME Handle conditional focus
-      (let ((process-environment (frame-parameter (or frame (selected-frame)) 'environment)))
+      (let ((process-environment (frame-parameter frame 'environment)))
         (call-process sway-swaymsg-binary nil nil nil (format sway-focus-message-format (cdr sway)))))
     (frame-selected-window frame)))
 
