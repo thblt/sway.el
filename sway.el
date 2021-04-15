@@ -117,6 +117,7 @@ Return either nil if there's none, or a pair of (FRAME-OBJECT
     (when sway ;; @FIXME Handle conditional focus
       (let ((process-environment (frame-parameter frame 'environment)))
         (call-process sway-swaymsg-binary nil nil nil (format sway-focus-message-format (cdr sway)))))
+    ;; We need to return non-nil iff we're displaying BUFFER
     (frame-selected-window frame)))
 
 (provide 'sway)
