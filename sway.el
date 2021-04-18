@@ -51,7 +51,7 @@ If FRAME is nil, use the value of (selected-frame)."
     (goto-char (point-min))
     (json-parse-buffer :null-object nil :false-object nil)))
 
-(defun sway-list-windows (tree &optional visible-only)
+(defun sway-list-windows (tree &optional visible-only focused-only)
   "Walk TREE and return windows."
   ;; @TODO What this actually does is list terminal containers that
   ;; aren't workspaces.  The latter criterion is to eliminate
@@ -61,11 +61,12 @@ If FRAME is nil, use the value of (selected-frame)."
     (if (and
          (zerop (length next-tree))
          (not (string= "workspace" (gethash "type" tree)))
-         (if visible-only (gethash "visible" tree) t))
+         (if visible-only (gethash "visible" tree) t)
+         (if focused-only (gethash "focused" tree) t))
         tree ; Collect
-      (-flatten
+      (-flatten ; Or recurse
        (mapcar
-        (lambda (t) (sway-list-windows t visible-only))
+        (lambda (t) (sway-list-windows t visible-only focused-only))
         next-tree)))))
 
 (defun sway-find-frame (tree)
@@ -81,10 +82,10 @@ If FRAME is nil, use the value of (selected-frame)."
 (defun sway-get-id (tree)
   (gethash "id" tree))
 
-(defun sway-find-frames (tree &optional visible-only)
+(defun sway-find-frames (tree &optional visible-only focused-only)
   "Find all visible Emacs frames in TREE, and return an alist
 of (FRAME-OBJECT . SWAY-ID)"
-  (let* ((wins (sway-list-windows tree visible-only)))
+  (let* ((wins (sway-list-windows tree visible-only focused-only)))
     (seq-filter  (lambda (x) (car x))
                  (-zip (mapcar 'sway-find-frame wins) (mapcar 'sway-get-id wins)))))
 
