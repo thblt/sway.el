@@ -59,6 +59,7 @@ This isn't easy, because:
    from existing client frames, eg with C-x 5 2 (this is bug
    #47806).  This is why we have `sway-socket-tracker-mode'."
   (or (frame-parameter nil 'sway-socket)
+      (getenv "SWAYSOCK" (selected-frame))
       (getenv "SWAYSOCK")))
 
 (defun sway-msg (handler &rest message)
