@@ -119,6 +119,44 @@ Return either nil if there's none, or a pair of (FRAME-OBJECT
         (call-process sway-swaymsg-binary nil nil nil (format sway-focus-message-format (cdr sway)))))
     ;; We need to return non-nil iff we're displaying BUFFER
     (frame-selected-window frame)))
+;;;; The Undertaker: A stupid mode to make it easier to kill frames on bury-buffer
+
+;; Another little trick, technically independant from sway.  Some
+;; frames shouldn't last, but sometimes we reuse them.  sway.el marks
+;; frames it creates with the `sway-dedicated' frame parameter, whose
+;; value is a buffer.  As long as this frame keeps displaying this
+;; buffer, we kill the whole frame if the buffer gets buried.
+
+(defvar sway-undertaker-killer-commands
+  (list 'bury-buffer
+        'cvs-bury-buffer
+        'magit-log-bury-buffer
+        'magit-mode-bury-buffer)
+  "Commands whose invocation will kill the frame if it's still
+dedicated.")
+
+(defun sway-undertaker-protect (&optional frame)
+  "Remove the `sway-killable' parameter of FRAME."
+
+  (if (and (frame-parameter frame 'sway-dedicated)
+           (member last-command sway-undertaker-killer-commands))
+      ;; kill the frame
+      (delete-frame frame)
+    ;; otherwise, drop the sway-dedicated parameter if its contents have changed.
+    (when-let ((buffer (frame-parameter nil 'sway-dedicated))
+               (windows (window-list frame 'never)))
+      (unless (and (= 1 (length windows))
+                   (eq buffer (window-buffer (car windows))))
+        ;; (message "Frame %s is now safe from The Undertaker because of %s." (or frame (selected-frame)) windows)
+        (set-frame-parameter frame 'sway-dedicated nil)))))
+
+(define-minor-mode sway-undertaker-mode
+  "Remove the `sway-killable' parameter of frames on `window-configuration-change-hook'"
+  :global t
+  (if sway-undertaker-mode
+      ;; Install
+      (add-hook 'window-configuration-change-hook 'sway-undertaker-protect)
+    (remove-hook 'window-configuration-change-hook 'sway-undertaker-protect)))
 
 ;;;; Tracking minor mode
 
