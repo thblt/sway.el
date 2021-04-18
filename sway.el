@@ -103,22 +103,39 @@ Return either nil if there's none, or a pair of (FRAME-OBJECT
              (and (sway-frame-displays-buffer-p (car f) buffer) f))
            (sway-find-frames (sway-tree) visible-only)))
 
+;;;; Shackle integration
+
 (defun sway-shackle-display-buffer-frame (buffer alist plist)
   "Show BUFFER in a new Emacs frame, unless one is already
   visible on current workspace"
-  (let* ((sway (sway-find-frame-for-buffer buffer t))
+  (let* ((previous-frame (selected-frame))
+         (sway (sway-find-frame-for-buffer buffer t))
          (frame (or (car sway)
-                    ;; cons: to get the same format (FRAME . SWAY-ID)
                     (funcall pop-up-frame-function))))
+
     ;; Display buffer if frame doesn't already.
-    (set-window-buffer (frame-selected-window frame) buffer)
-    ;; @FIXME This ^^^ ignores the case where the existing frame found
-    ;; in Sway tree displays BUFFER in a non-selected window.
-    (when sway ;; @FIXME Handle conditional focus
-      (let ((process-environment (frame-parameter frame 'environment)))
-        (call-process sway-swaymsg-binary nil nil nil (format sway-focus-message-format (cdr sway)))))
-    ;; We need to return non-nil iff we're displaying BUFFER
+    (if (sway-frame-displays-buffer-p frame buffer)
+        ;; Select existing window
+        (set-frame-selected-window frame (get-buffer-window buffer frame))
+      ;; Show buffer in current window
+      (set-window-buffer (frame-selected-window frame) buffer))
+
+    ;; (message "buffer=%s\nalist=%s\nplist=%s" buffer alist plist)
+
+    ;; Give focus back to previous window.
+    (select-frame-set-input-focus previous-frame)
+
+    ;; Mark as killable for undertaker mode
+    ;; @TODO Make this a configuration option.
+    (unless sway
+      ;; (message "Marking %s sway-dedicated to %s" frame buffer)
+      (set-frame-parameter frame 'sway-dedicated buffer))
+
+    ;; Return the window displaying buffer.
     (frame-selected-window frame)))
+;;(let ((process-environment (frame-parameter frame 'environment)))
+;;(call-process sway-swaymsg-binary nil nil nil (format sway-focus-message-format focused))))
+
 ;;;; The Undertaker: A stupid mode to make it easier to kill frames on bury-buffer
 
 ;; Another little trick, technically independant from sway.  Some
