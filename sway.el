@@ -120,6 +120,23 @@ Return either nil if there's none, or a pair of (FRAME-OBJECT
     ;; We need to return non-nil iff we're displaying BUFFER
     (frame-selected-window frame)))
 
+;;;; Tracking minor mode
+
+(defun sway-after-make-frame-function (f)
+  "When creating a new frame, copy the environment parameter from the selected frame."
+  (let ((oldenv(frame-parameter nil 'environment)))
+    (when (and oldenv (not (frame-parameter f 'environment)))
+      (set-frame-parameter f 'environment oldenv))))
+
+(define-minor-mode swaysock-tracker-mode
+  "A minor mode to track the value of SWAYSOCK on newly created
+frames.  This is a best effort approach, and remains probably
+very fragile."
+  :global t
+  (if swaysock-tracker-mode
+      (add-hook 'after-make-frame-functions 'sway-after-make-frame-function)
+    (remove-hook 'after-make-frame-functions 'sway-after-make-frame-function)))
+
 (provide 'sway)
 
 ;;; sway.el ends here
