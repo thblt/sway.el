@@ -29,10 +29,15 @@
 ;; managers, to 1) use frames instead of windows while still 2) giving
 ;; focus to existing frames instead of duplicating them.
 
+;; It is highly likely that this will also work with i3, but it's
+;; completely untested.
+
 ;;; Code:
 
 (require 'dash)
 (require 'json)
+
+;;;; Fundamental Sway interaction
 
 (defcustom sway-swaymsg-binary (executable-find "swaymsg")
   "Path to `swaymsg' or a compatible program.")
@@ -41,15 +46,49 @@
   "The format of the message to send to swaymsh to focus a
   window.")
 
+(defun sway-find-socket ()
+  "A non-subtle attempt to find the path to the Sway socket.
+Having `sway-socket-tracker-mode' will help a lot.
+
+This isn't easy, because:
+ - The same daemon can survive multiple Sway/X instances, so the
+   daemon's $SWAYSOCK can be obsolete.
+ - But, lucky for us, client frames get a copy on the client's
+   environment as a frame parameter!
+ - But, stupid Emacs don't copy  parameter copy on new frames created
+   from existing client frames, eg with C-x 5 2 (this is bug
+   #47806).  This is why we have `sway-socket-tracker-mode'."
+  (or (frame-parameter nil 'sway-socket)
+      (getenv "SWAYSOCK")))
+
+(defun sway-msg (handler &rest message)
+  "Send MESSAGE to swaymsg, writing output to HANDLER.
+
+If HANDLER is a buffer, output is added to it.
+
+If HANDLER is a function, output is written to a temporary
+  buffer, then function is run on that buffer with point at the
+  beginning and its result is returned.
+
+Otherwise, output is dropped."
+  (let ((buffer (or
+                 (when (bufferp handler) handler)
+                 (generate-new-buffer "*swaymsg*")))
+        (process-environment (list (format "SWAYSOCK=%s" (sway-find-socket)))))
+    (with-current-buffer buffer
+      (apply 'call-process sway-swaymsg-binary nil buffer nil message)
+      (when (functionp handler)
+        (prog2
+            (goto-char (point-min))
+            (funcall handler)
+          (kill-buffer buffer))))))
+
 (defun sway-tree (&optional frame)
   "Get the Sway tree as an elisp object, using environment of FRAME.
 
 If FRAME is nil, use the value of (selected-frame)."
   (with-temp-buffer
-    (let ((process-environment (frame-parameter frame 'environment)))
-      (call-process sway-swaymsg-binary nil (current-buffer) nil "-t" "get_tree"))
-    (goto-char (point-min))
-    (json-parse-buffer :null-object nil :false-object nil)))
+    (sway-msg (lambda () (json-parse-buffer :null-object nil :false-object nil)) "-t" "get_tree")))
 
 (defun sway-list-windows (tree &optional visible-only focused-only)
   "Walk TREE and return windows."
@@ -128,7 +167,8 @@ Return either nil if there's none, or a pair of (FRAME-OBJECT
 
     ;; Mark as killable for undertaker mode
     ;; @TODO Make this a configuration option.
-    (unless sway
+    (when (and (plist-get plist :dedicate)
+               (not sway))
       ;; (message "Marking %s sway-dedicated to %s" frame buffer)
       (set-frame-parameter frame 'sway-dedicated buffer))
 
@@ -142,20 +182,31 @@ Return either nil if there's none, or a pair of (FRAME-OBJECT
 ;; Another little trick, technically independant from sway.  Some
 ;; frames shouldn't last, but sometimes we reuse them.  sway.el marks
 ;; frames it creates with the `sway-dedicated' frame parameter, whose
-;; value is a buffer.  As long as this frame keeps displaying this
-;; buffer, we kill the whole frame if the buffer gets buried.
+;; value is a buffer.  As long as this frame keeps displaying only
+;; this buffer in a single window, we kill the whole frame if this
+;; buffer gets buried.
 
 (defvar sway-undertaker-killer-commands
   (list 'bury-buffer
         'cvs-bury-buffer
         'magit-log-bury-buffer
-        'magit-mode-bury-buffer)
+        'magit-mode-bury-buffer
+        'quit-window)
   "Commands whose invocation will kill the frame if it's still
 dedicated.")
 
-(defun sway-undertaker-protect (&optional frame)
-  "Remove the `sway-killable' parameter of FRAME."
+(defun sway--undertaker (&optional frame)
+  "Call the undertaker on FRAME.
 
+This should only be called from
+`window-configuration-change-hook'.
+
+If the frame is sway-dedicated, and `last-command' is one of
+`sway-undertaker-killer-commands', delete the frame.
+
+Otherwise, un-dedicate the frame if it has more than one window
+or a window not displaying the buffer it's sway-dedicated to."
+  ;;(message "Last command: %s" last-command)
   (if (and (frame-parameter frame 'sway-dedicated)
            (member last-command sway-undertaker-killer-commands))
       ;; kill the frame
@@ -173,25 +224,24 @@ dedicated.")
   :global t
   (if sway-undertaker-mode
       ;; Install
-      (add-hook 'window-configuration-change-hook 'sway-undertaker-protect)
+      (add-hook 'window-configuration-change-hook 'sway--undertaker)
     (remove-hook 'window-configuration-change-hook 'sway-undertaker-protect)))
 
 ;;;; Tracking minor mode
 
-(defun sway-after-make-frame-function (f)
+(defun sway--socket-tracker (frame)
   "When creating a new frame, copy the environment parameter from the selected frame."
-  (let ((oldenv(frame-parameter nil 'environment)))
-    (when (and oldenv (not (frame-parameter f 'environment)))
-      (set-frame-parameter f 'environment oldenv))))
+  (when-let ((socket (sway-find-socket)))
+    (set-frame-parameter frame 'sway-socket socket)))
 
-(define-minor-mode swaysock-tracker-mode
+(define-minor-mode sway-socket-tracker-mode
   "A minor mode to track the value of SWAYSOCK on newly created
 frames.  This is a best effort approach, and remains probably
 very fragile."
   :global t
-  (if swaysock-tracker-mode
-      (add-hook 'after-make-frame-functions 'sway-after-make-frame-function)
-    (remove-hook 'after-make-frame-functions 'sway-after-make-frame-function)))
+  (if sway-socket-tracker-mode
+      (add-hook 'after-make-frame-functions 'sway--socket-tracker)
+    (remove-hook 'after-make-frame-functions 'sway--socket-tracker)))
 
 (provide 'sway)
 
