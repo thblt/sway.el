@@ -6,15 +6,42 @@ window manager deal with window management, and is designed to play
 well with [[https://depp.brause.cc/shackle/][Shackle]].
 
 Its only directly usable feature right now is the
-sway-shackle-display-buffer-frame, which eithers creates a new frame
+=sway-shackle-display-buffer-frame=, which either creates a new frame
 with a given buffer or focus that buffer in the frame it's already
-displayed on.  A reasonable default config with Shackle could look like:
+displayed on.  A reasonable default config with Shackle could look
+like:
 
 #+begin_src elisp
   (setq shackle-default-rule '(:frame t)
         shackle-display-buffer-frame-function 'sway-shackle-display-buffer-frame)
+
+  (sway-socket-tracker-mode)
+  (sway-undertaker-mode) ;; If you want to use :dedicate, read below.
 #+end_src
+
+* Extension to Shackle
+
+=sway.el= introduces a new Shackle rule, =:dedicate t=, managed by
+~sway-undertaker-mode~.  With =:dedicate=, when a new frame is created
+for a buffer, it is sway-dedicated to this buffer. If this buffer gets
+buried, the frame gets closed immediately. For convenience, using this
+frame in any other way than acting on that buffer (switching buffers,
+splitting windows) will permanently deactivate the undertaker and make
+it behave like a normal frame.
 
 This package requires an Emacs with (preferably native) JSON support.
 Your Emacs is built with native JSON iff =C-h f= reports that the
 function =json-parse-buffer= is implemented in C.
+
+* The socket problem
+
+Emacs has an issue keeping track of environment variables of client
+frames.  To maintain access to the Sway socket, we need some tricks,
+that are automagically managed by `sway-socket-tracker-mode`.
+
+* What about i3?
+
+I don't use i3, but it would be trivial to implement =i3-msg= along
+=sway-msg=, and the rest should work immediately.  Feel free :)
+(Notice that with i3 you won't need =sway-socket-tracker-mode=, frames
+have a =display= parameter).
