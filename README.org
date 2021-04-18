@@ -45,3 +45,53 @@ I don't use i3, but it would be trivial to implement =i3-msg= along
 =sway-msg=, and the rest should work immediately.  Feel free :)
 (Notice that with i3 you won't need =sway-socket-tracker-mode=, frames
 have a =display= parameter).
+
+* Exemple Shackle configuration
+
+#+begin_src emacs-lisp
+  (setq shackle-rules
+        `(("*Help*" :align t :select t)
+          ;; ** Magit **
+          (magit-status-mode :same t)
+          ((:custom
+            ,(lambda (buffer)
+               (with-current-buffer buffer
+                 (and
+                  (eq major-mode 'magit-diff-mode)
+                  magit-display-buffer-noselect))))
+           :select nil :frame t :dedicate t)
+          ((:custom
+            ,(lambda (buffer)
+               (with-current-buffer buffer
+                 (bound-and-true-p magit-display-buffer-noselect))))
+           :select nil :frame nil :dedicate t)
+          (magit-log-mode :same t)
+          (magit-submodule-list-mode :same t)
+          (magit-revision-mode :same t)
+          (magit-process-mode :frame nil)
+          ("COMMIT_EDITMSG" :popup t :select t)
+          ("^magit.*$'" :regexp t :frame nil)
+          (" *transient*" :frame nil :popup t :select nil) ; Magit helper popups
+          ;; ** Sunrise commander **
+          (sunrise-mode :custom (lambda (&rest _)))
+          ;; ** Proced **
+          ("*Proced*" :same t)
+          (" *Marked Processes*" :frame nil :popup t :select t)
+          ;; ** Byte-compiler
+          ("*Compile-Log*" :frame nil :popup t :select t)
+          ;; ** Local variables warning **
+          ("*Local Variables*" :same t :frame nil :popup t :select t)
+          ;; ** Misc **
+          ("*Org PDF LaTeX Output*" :select nil)
+          ("*Org Preview LaTeX Output*" :select nil)
+          (" *undo-tree*" :frame nil)
+          ("*Register Preview*" :frame nil :noselect t)
+          (flycheck-error-list-mode :select t)
+          ((compilation-mode) :noselect t)
+          ((inferior-scheme-mode "*shell*" "*eshell*") :popup t))
+
+        shackle-default-rule '(:frame t)
+        shackle-default-size 0.4
+        shackle-inhibit-window-quit-on-same-windows t
+        shackle-display-buffer-frame-function 'sway-shackle-display-buffer-frame)
+#+end_src
