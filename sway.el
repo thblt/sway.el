@@ -37,14 +37,10 @@
 (require 'dash)
 (require 'json)
 
-;;;; Fundamental Sway interaction
+;;;; Low-level Sway interaction
 
 (defcustom sway-swaymsg-binary (executable-find "swaymsg")
   "Path to `swaymsg' or a compatible program.")
-
-(defconst sway-focus-message-format "[con_id=%s] focus"
-  "The format of the message to send to swaymsh to focus a
-  window.")
 
 (defun sway-find-socket ()
   "A non-subtle attempt to find the path to the Sway socket.
@@ -83,6 +79,8 @@ Otherwise, output is dropped."
             (goto-char (point-min))
             (funcall handler)
           (kill-buffer buffer))))))
+
+;;;; Sway interaction
 
 (defun sway-tree (&optional frame)
   "Get the Sway tree as an elisp object, using environment of FRAME.
