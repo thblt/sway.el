@@ -32,6 +32,17 @@
 ;; It is highly likely that this will also work with i3, but it's
 ;; completely untested.
 
+;; * General notes
+;;
+;; In this package, Emacs frames can be designated in three different
+;; ways:
+;;
+;;  1. As regular Emacs frame objects, that verifies (framep)
+;;  3. As Sway container IDs, integers.
+;;  3. Or as combinations of both, as cons list (FRAME . WINDOW-ID)
+;;
+;; In a single case, Sway tree nodes or X-window IDs are used.
+
 ;;; Code:
 
 (require 'dash)
@@ -58,7 +69,14 @@ This isn't easy, because:
       (getenv "SWAYSOCK" (selected-frame))
       (getenv "SWAYSOCK")))
 
-(defun sway-msg (handler &rest message)
+(defun sway-json-parse-buffer ()
+  "Parse current buffer as JSON, from point.
+
+This function is just to save a few lambdas and make sure we're
+reasonably consistent."
+  (json-parse-buffer :null-object nil :false-object nil))
+
+(defun sway-msg (handler message)
   "Send MESSAGE to swaymsg, writing output to HANDLER.
 
 If HANDLER is a buffer, output is added to it.
@@ -73,12 +91,51 @@ Otherwise, output is dropped."
                  (generate-new-buffer "*swaymsg*")))
         (process-environment (list (format "SWAYSOCK=%s" (sway-find-socket)))))
     (with-current-buffer buffer
-      (apply 'call-process sway-swaymsg-binary nil buffer nil message)
+      (call-process sway-swaymsg-binary nil buffer nil message)
       (when (functionp handler)
         (prog2
             (goto-char (point-min))
             (funcall handler)
           (kill-buffer buffer))))))
+
+(defun sway-do (message &optional noerror)
+  "Run a sway command that returns only success or error.
+
+This function always returns t or raises an error, unless NOERROR
+is non-nil.  If NOERROR is a function."
+  (let ((err
+         (sway--process-response
+          message
+          (sway-msg 'sway-json-parse-buffer message)
+          (if noerror (if (functionp noerror) noerror 'ignore) 'error))))
+    err))
+
+(defun sway--process-response (message response &optional handler)
+  "Read RESPONSE, a parsed Sway response.
+
+Sway responses are always a vector of statuses, because `swaymsg'
+can accept multiple messages.
+
+If none of them is an error, return nil.  Otherwise, return
+output suitable for an error message, optionally passing it to
+HANDLER.
+
+MESSAGE is the message that was sent to Sway.  It is used to
+annotate the error output."
+  (unless handler (setq handler 'identity))
+
+  (when (cl-some (lambda (rsp) (not (gethash "success" rsp))) response)
+    ;; We have an error.
+    (funcall handler
+             (concat
+              (format "Sway error on `%s'" message)
+              (mapconcat
+               (lambda (rsp)
+                 (format " -%s %s"
+                         (if (gethash "parse_error" rsp) " [Parse error]" "")
+                         (gethash "error" rsp (format "No message: %s" rsp))))
+               response
+               "\n")))))
 
 ;;;; Sway interaction
 
@@ -87,14 +144,16 @@ Otherwise, output is dropped."
 
 If FRAME is nil, use the value of (selected-frame)."
   (with-temp-buffer
-    (sway-msg (lambda () (json-parse-buffer :null-object nil :false-object nil)) "-t" "get_tree")))
+    (sway-msg 'sway-json-parse-buffer "-tget_tree")))
 
-(defun sway-list-windows (tree &optional visible-only focused-only)
+(defun sway-list-windows (&optional tree visible-only focused-only)
   "Walk TREE and return windows."
   ;; @TODO What this actually does is list terminal containers that
   ;; aren't workspaces.  The latter criterion is to eliminate
   ;; __i3_scratch, which is a potentially empty workspace.  It works,
   ;; but could maybe be improved.
+  (unless tree
+    (setq tree (sway-tree)))
   (let ((next-tree (gethash "nodes" tree)))
     (if (and
          (zerop (length next-tree))
@@ -104,28 +163,66 @@ If FRAME is nil, use the value of (selected-frame)."
         tree ; Collect
       (-flatten ; Or recurse
        (mapcar
-        (lambda (t) (sway-list-windows t visible-only focused-only))
+        (lambda (t2) (sway-list-windows t2 visible-only focused-only))
         next-tree)))))
 
-(defun sway-find-frame (tree)
-  "Return the Emacs frame corresponding to TREE, a Sway window."
-  (let ((parent (gethash "window" tree)))
-    (cl-some (lambda (frame)
-               (let ((owi (frame-parameter frame 'outer-window-id)))
-                 (and owi
-                      (eq parent (string-to-number owi))
-                      frame)))
-             (frame-list))))
+;;;; Focus control
+
+(defun sway-focus-container (id &optional noerror)
+  "Focus Sway container ID.
+
+ID is a Sway ID.  NOERROR is as in `sway-do', which see."
+  (sway-do (format "[con_id=%s] focus;" id) noerror))
+
+;;;; Windows and frames manipulation
+
+(defun sway-find-x-window-frame (window)
+  "Return the Emacs frame corresponding to Window, an X-Window ID.
+
+Notice WINDOW is NOT a Sway ID, but a X id or a Sway tree objet.
+If the latter, it most be the window node of a a tree
+
+This is more of an internal-ish function.  It is used when
+walking the tree to bridge Sway windows to frame objects, since
+the X id is the only value available from both."
+  (when (hash-table-p window)
+    (setq window (gethash "window" window)))
+  (cl-some (lambda (frame)
+             (let ((owi (frame-parameter frame 'outer-window-id)))
+               (and owi
+                    (eq window (string-to-number owi))
+                    frame)))
+           (frame-list)))
+
+(defun sway-find-frame-window (frame &optional tree)
+  "Return the sway window id corresponding to FRAME.
+
+FRAME is an Emacs frame object.
+
+Use TREE if non-nil, otherwise call (sway-tree)."
+  (unless tree (setq tree (sway-tree)))
+  (cl-some
+   (lambda (f)
+     (when (eq frame (car f))
+       (cdr f)))
+   (sway-list-frames tree)))
 
 (defun sway-get-id (tree)
   (gethash "id" tree))
 
-(defun sway-find-frames (tree &optional visible-only focused-only)
-  "Find all visible Emacs frames in TREE, and return an alist
-of (FRAME-OBJECT . SWAY-ID)"
+(defun sway-list-frames (&optional tree visible-only focused-only)
+  "List all Emacs frames in TREE.
+
+VISIBLE-ONLY and FOCUSED-ONLY select only frames that are,
+respectively, visible and focused.
+
+Return value is a list of (FRAME-OBJECT . SWAY-ID)"
+  (unless tree (setq tree (sway-tree)))
   (let* ((wins (sway-list-windows tree visible-only focused-only)))
-    (seq-filter  (lambda (x) (car x))
-                 (-zip (mapcar 'sway-find-frame wins) (mapcar 'sway-get-id wins)))))
+    (seq-filter (lambda (x) (car x))
+                (-zip
+                 (mapcar 'sway-find-x-window-frame wins)
+                 (mapcar 'sway-get-id wins)))))
 
 (defun sway-frame-displays-buffer-p (frame buffer)
   "Determine if FRAME displays BUFFER."
@@ -133,22 +230,26 @@ of (FRAME-OBJECT . SWAY-ID)"
    (lambda (w) (eq (window-buffer w) buffer))
    (window-list frame nil)))
 
-(defun sway-find-frame-for-buffer (buffer &optional visible-only)
+(defun sway-find-frame-for-buffer (buffer &optional tree visible-only focused-only)
   "Find which frame displays BUFFER.
 
-Return either nil if there's none, or a pair of (FRAME-OBJECT
-. SWAY-ID)"
+TREE, VISIBLE-ONLY, FOCUSED-ONLY and return value are as in
+`sway-list-frames', which see."
+  (unless tree (setq tree (sway-tree)))
   (cl-some (lambda (f)
-             (and (sway-frame-displays-buffer-p (car f) buffer) f))
-           (sway-find-frames (sway-tree) visible-only)))
+             (when (sway-frame-displays-buffer-p (car f) buffer)
+               f))
+           (sway-list-frames tree visible-only focused-only)))
 
 ;;;; Shackle integration
 
 (defun sway-shackle-display-buffer-frame (buffer alist plist)
-  "Show BUFFER in a new Emacs frame, unless one is already
-  visible on current workspace"
-  (let* ((previous-frame (selected-frame))
-         (sway (sway-find-frame-for-buffer buffer t))
+  "Show BUFFER in an Emacs frame, creating it if needed.
+
+ALIST and PLIST are as in Shackle."
+  (let* ((tree (sway-tree))
+         (old-frame (sway-find-frame-window (selected-frame) tree))
+         (sway (sway-find-frame-for-buffer buffer tree t))
          (frame (or (car sway)
                     (funcall pop-up-frame-function))))
 
@@ -162,13 +263,12 @@ Return either nil if there's none, or a pair of (FRAME-OBJECT
     ;; (message "buffer=%s\nalist=%s\nplist=%s" buffer alist plist)
 
     ;; Give focus back to previous window.
-    (select-frame-set-input-focus previous-frame)
+    (sway-focus-container old-frame)
 
     ;; Mark as killable for undertaker mode
     ;; @TODO Make this a configuration option.
     (when (and (plist-get plist :dedicate)
                (not sway))
-      ;; (message "Marking %s sway-dedicated to %s" frame buffer)
       (set-frame-parameter frame 'sway-dedicated buffer))
 
     ;; Return the window displaying buffer.
@@ -187,10 +287,10 @@ Return either nil if there's none, or a pair of (FRAME-OBJECT
 
 (defvar sway-undertaker-killer-commands
   (list 'bury-buffer
-        'cvs-bury-buffer
-        'magit-log-bury-buffer
-        'magit-mode-bury-buffer
-        'quit-window)
+         'cvs-bury-buffer
+         'magit-log-bury-buffer
+         'magit-mode-bury-buffer
+         'quit-window)
   "Commands whose invocation will kill the frame if it's still
 dedicated.")
 
@@ -205,7 +305,6 @@ If the frame is sway-dedicated, and `last-command' is one of
 
 Otherwise, un-dedicate the frame if it has more than one window
 or a window not displaying the buffer it's sway-dedicated to."
-  ;;(message "Last command: %s" last-command)
   (if (and (frame-parameter frame 'sway-dedicated)
            (member last-command sway-undertaker-killer-commands))
       ;; kill the frame
@@ -229,12 +328,20 @@ or a window not displaying the buffer it's sway-dedicated to."
 ;;;; Tracking minor mode
 
 (defun sway--socket-tracker (frame)
-  "When creating a new frame, copy the environment parameter from the selected frame."
+  "Track path to the Sway socket.
+
+Store the output of `sway-find-socket' as a parameter of FRAME.
+
+This is meant to be run in `after-make-frame-functions', so that
+the previous frame is still selected and we have better hope of
+getting a value."
   (when-let ((socket (sway-find-socket)))
     (set-frame-parameter frame 'sway-socket socket)))
 
 (define-minor-mode sway-socket-tracker-mode
-  "A minor mode to track the value of SWAYSOCK on newly created
+  "Try not to lose the path to the Sway socket.
+
+A minor mode to track the value of SWAYSOCK on newly created
 frames.  This is a best effort approach, and remains probably
 very fragile."
   :global t
