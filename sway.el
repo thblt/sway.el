@@ -1,4 +1,4 @@
-;;; sway.el --- Emacs 🖤 Sway  -*- lexical-binding: t; coding: utf-8 -*-
+;;; sway.el --- Communication with the Sway window manager  -*- lexical-binding: t; coding: utf-8 -*-
 
 ;; Copyright (c) 2020-2021 Thibault Polge <thibault@thb.lt>
 
@@ -25,13 +25,18 @@
 
 ;;; Commentary:
 
-;; This is a very rudimentary library to talk to Sway from Emacs.  Its
-;; main use case is in combination with Shackle or some other popup
-;; managers, to 1) use frames instead of windows while still 2) giving
-;; focus to existing frames instead of duplicating them.
+;; This is a basic library to control the Sway window manager from
+;; Emacs.  Its main use case is in combination with popup managers
+;; like Shackle, to 1) use frames instead of windows while still 2)
+;; giving focus to existing frames instead of duplicating them.
 
-;; It is highly likely that this will also work with i3, but it's
-;; completely untested.
+;; This can probably work with i3 by simply reimplementing `sway-msg';
+;; this is left as an exercice to the reader.
+
+;;; Code:
+
+(require 'dash)
+(require 'json)
 
 ;; * General notes
 ;;
@@ -43,11 +48,6 @@
 ;;  3. Or as combinations of both, as cons list (FRAME . WINDOW-ID)
 ;;
 ;; In a single case, Sway tree nodes or X-window IDs are used.
-
-;;; Code:
-
-(require 'dash)
-(require 'json)
 
 ;;;; Low-level Sway interaction
 
