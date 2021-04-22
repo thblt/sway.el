@@ -377,8 +377,14 @@ Used internally by `sway-x-focus-through-sway-mode.")
 (defun sway--x-focus-frame (frame &optional noactivate)
   "Drop-in replacement for `sway-focus-frame', which see.
 
-FRAME is the frame to focus, NOACTIVATE is currently ignored."
-  (sway-focus-container (sway-find-frame-window frame)))
+FRAME is the frame to focus, NOACTIVATE is currently ignored.
+
+If FRAME isn't managed by the Sway instance we have access to,
+run `sway--real-x-focus-frame', which should be the real
+`x-focus-frame'."
+  (if-let ((win (sway-find-frame-window frame)))
+      (sway-focus-container win)
+    (sway--real-x-focus-frame frame noactivate)))
 
 (define-minor-mode sway-x-focus-through-sway-mode
   "Temporary fix/workaround for Sway bug #6216.
