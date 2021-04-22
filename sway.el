@@ -8,7 +8,7 @@
 ;; Keywords: frames
 ;; Homepage: https://github.com/thblt/sway.el
 ;; Version: 0.2.1
-;; Package-Requires: ((emacs "27.1"))
+;; Package-Requires: ((emacs "27.1") (dash "2.18.1"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
