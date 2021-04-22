@@ -139,6 +139,8 @@ annotate the error output."
 
 ;;;; Sway interaction
 
+
+
 (defun sway-tree (&optional frame)
   "Get the Sway tree as an elisp object, using environment of FRAME.
 
@@ -165,6 +167,14 @@ If FRAME is nil, use the value of (selected-frame)."
        (mapcar
         (lambda (t2) (sway-list-windows t2 visible-only focused-only))
         next-tree)))))
+
+
+(defun sway-version ()
+  "Return the Sway version number."
+  (let ((json (sway-msg 'json-parse-buffer "-tget_version")))
+    (list (gethash "major" json)
+          (gethash "minor" json)
+          (gethash "patch" json))))
 
 ;;;; Focus control
 
