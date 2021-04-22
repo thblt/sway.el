@@ -7,7 +7,7 @@
 ;;
 ;; Keywords: convenience
 ;; Homepage: https://github.com/thblt/sway.el
-;; Version: 0.1
+;; Version: 0.2
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -350,5 +350,36 @@ very fragile."
     (remove-hook 'after-make-frame-functions 'sway--socket-tracker)))
 
 (provide 'sway)
+
+;;;; Focus command replacement
+
+;; This mode is a temporary fix/workaround for
+;; https://github.com/swaywm/sway/issues/6216.  It replaces
+;; `x-focus-frame' with an implementation that
+;; delegates to `sway-focus-container'.
+
+(defvar sway--real-x-focus-frame nil
+  "The “real” `x-focus-frame' function.
+
+Used internally by `sway-x-focus-through-sway-mode.")
+
+
+(defun sway--x-focus-frame (frame &optional noactivate)
+  "Drop-in replacement for `sway-focus-frame', which see.
+
+FRAME is the frame to focus, NOACTIVATE is currently ignored."
+  (sway-focus-container (sway-find-frame-window frame)))
+
+(define-minor-mode sway-x-focus-through-sway-mode
+  "Temporary fix/workaround for Sway bug #6216.
+
+Replace `x-focus-frame' with an implementation that delegates to
+`sway-focus-container'."
+  :global t
+  (if sway-x-focus-through-sway-mode
+      (progn
+        (fset 'sway--real-x-focus-frame (symbol-function 'x-focus-frame))
+        (fset 'x-focus-frame (symbol-function 'sway--x-focus-frame)))
+    (fset 'x-focus-frame (symbol-function 'sway--real-x-focus-frame))))
 
 ;;; sway.el ends here

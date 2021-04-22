@@ -17,6 +17,7 @@ like:
 
   (sway-socket-tracker-mode)
   (sway-undertaker-mode) ;; If you want to use :dedicate, read below.
+  (sway-x-focus-through-sway-mode) ;; Temporary workaround for Sway bug 6216
 #+end_src
 
 * Extension to Shackle
