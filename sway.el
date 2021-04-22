@@ -7,7 +7,8 @@
 ;;
 ;; Keywords: convenience
 ;; Homepage: https://github.com/thblt/sway.el
-;; Version: 0.2
+;; Version: 0.2.1
+;; Package-Requires: ((emacs "27.1"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -50,21 +51,27 @@
 
 ;;;; Low-level Sway interaction
 
+(defgroup sway nil
+  "Communication with the Sway window manager."
+  :group 'environment)
+
 (defcustom sway-swaymsg-binary (executable-find "swaymsg")
-  "Path to `swaymsg' or a compatible program.")
+  "Path to `swaymsg' or a compatible program."
+  :type 'string
+  :group 'sway)
 
 (defun sway-find-socket ()
   "A non-subtle attempt to find the path to the Sway socket.
-Having `sway-socket-tracker-mode' will help a lot.
 
 This isn't easy, because:
  - The same daemon can survive multiple Sway/X instances, so the
    daemon's $SWAYSOCK can be obsolete.
  - But, lucky for us, client frames get a copy on the client's
    environment as a frame parameter!
- - But, stupid Emacs don't copy  parameter copy on new frames created
-   from existing client frames, eg with C-x 5 2 (this is bug
-   #47806).  This is why we have `sway-socket-tracker-mode'."
+ - But, stupid Emacs don't copy parameter copy on new frames
+   created from existing client frames, eg with
+   \\[make-frame-command] (this is bug #47806).  This is why we
+   have the command `sway-socket-tracker-mode'."
   (or (frame-parameter nil 'sway-socket)
       (getenv "SWAYSOCK" (selected-frame))
       (getenv "SWAYSOCK")))
@@ -99,10 +106,16 @@ Otherwise, output is dropped."
           (kill-buffer buffer))))))
 
 (defun sway-do (message &optional noerror)
-  "Run a sway command that returns only success or error.
+  "Execute Sway command(s) MESSAGE.
 
 This function always returns t or raises an error, unless NOERROR
-is non-nil.  If NOERROR is a function."
+is non-nil.  If NOERROR is a function, it is called with the
+error message as its argument.
+
+Like Sway itself, this function supports sending multiple
+commands in the same message, separated by a semicolon.  It will
+fail as described above if at least one of these commands return
+an error."
   (let ((err
          (sway--process-response
           message
@@ -141,15 +154,18 @@ annotate the error output."
 
 
 
-(defun sway-tree (&optional frame)
-  "Get the Sway tree as an elisp object, using environment of FRAME.
-
-If FRAME is nil, use the value of (selected-frame)."
+(defun sway-tree ()
+  "Get the Sway tree as an elisp object."
   (with-temp-buffer
     (sway-msg 'sway-json-parse-buffer "-tget_tree")))
 
 (defun sway-list-windows (&optional tree visible-only focused-only)
-  "Walk TREE and return windows."
+  "Return all windows in Sway tree TREE.
+
+If TREE is nil, get it from `sway-tree'.
+
+If VISIBLE-ONLY, only select visible windows.
+If FOCUSED-ONLY, only select the focused window."
   ;; @TODO What this actually does is list terminal containers that
   ;; aren't workspaces.  The latter criterion is to eliminate
   ;; __i3_scratch, which is a potentially empty workspace.  It works,
@@ -167,7 +183,6 @@ If FRAME is nil, use the value of (selected-frame)."
        (mapcar
         (lambda (t2) (sway-list-windows t2 visible-only focused-only))
         next-tree)))))
-
 
 (defun sway-version ()
   "Return the Sway version number."
@@ -218,6 +233,7 @@ Use TREE if non-nil, otherwise call (sway-tree)."
    (sway-list-frames tree)))
 
 (defun sway-get-id (tree)
+  "Return the 'id' field of TREE, a hash table."
   (gethash "id" tree))
 
 (defun sway-list-frames (&optional tree visible-only focused-only)
@@ -251,41 +267,6 @@ TREE, VISIBLE-ONLY, FOCUSED-ONLY and return value are as in
                f))
            (sway-list-frames tree visible-only focused-only)))
 
-;;;; Shackle integration
-
-(defun sway-shackle-display-buffer-frame (buffer alist plist)
-  "Show BUFFER in an Emacs frame, creating it if needed.
-
-ALIST and PLIST are as in Shackle."
-  (let* ((tree (sway-tree))
-         (old-frame (sway-find-frame-window (selected-frame) tree))
-         (sway (sway-find-frame-for-buffer buffer tree t))
-         (frame (or (car sway)
-                    (funcall pop-up-frame-function))))
-
-    ;; Display buffer if frame doesn't already.
-    (if (sway-frame-displays-buffer-p frame buffer)
-        ;; Select existing window
-        (set-frame-selected-window frame (get-buffer-window buffer frame))
-      ;; Show buffer in current window
-      (set-window-buffer (frame-selected-window frame) buffer))
-
-    ;; (message "buffer=%s\nalist=%s\nplist=%s" buffer alist plist)
-
-    ;; Give focus back to previous window.
-    (sway-focus-container old-frame)
-
-    ;; Mark as killable for undertaker mode
-    ;; @TODO Make this a configuration option.
-    (when (and (plist-get plist :dedicate)
-               (not sway))
-      (set-frame-parameter frame 'sway-dedicated buffer))
-
-    ;; Return the window displaying buffer.
-    (frame-selected-window frame)))
-;;(let ((process-environment (frame-parameter frame 'environment)))
-;;(call-process sway-swaymsg-binary nil nil nil (format sway-focus-message-format focused))))
-
 ;;;; The Undertaker: A stupid mode to make it easier to kill frames on bury-buffer
 
 ;; Another little trick, technically independant from sway.  Some
@@ -297,12 +278,11 @@ ALIST and PLIST are as in Shackle."
 
 (defvar sway-undertaker-killer-commands
   (list 'bury-buffer
-         'cvs-bury-buffer
-         'magit-log-bury-buffer
-         'magit-mode-bury-buffer
-         'quit-window)
-  "Commands whose invocation will kill the frame if it's still
-dedicated.")
+        'cvs-bury-buffer
+        'magit-log-bury-buffer
+        'magit-mode-bury-buffer
+        'quit-window)
+  "Commands the interpreter should interpret as a request to kill a frame.")
 
 (defun sway--undertaker (&optional frame)
   "Call the undertaker on FRAME.
@@ -327,9 +307,11 @@ or a window not displaying the buffer it's sway-dedicated to."
         ;; (message "Frame %s is now safe from The Undertaker because of %s." (or frame (selected-frame)) windows)
         (set-frame-parameter frame 'sway-dedicated nil)))))
 
+;;;###autoload
 (define-minor-mode sway-undertaker-mode
-  "Remove the `sway-killable' parameter of frames on `window-configuration-change-hook'"
+  "The undertaker kills frames when the buffer they display is buried."
   :global t
+  :group 'sway
   (if sway-undertaker-mode
       ;; Install
       (add-hook 'window-configuration-change-hook 'sway--undertaker)
@@ -348,6 +330,7 @@ getting a value."
   (when-let ((socket (sway-find-socket)))
     (set-frame-parameter frame 'sway-socket socket)))
 
+;;;###autoload
 (define-minor-mode sway-socket-tracker-mode
   "Try not to lose the path to the Sway socket.
 
@@ -355,6 +338,7 @@ A minor mode to track the value of SWAYSOCK on newly created
 frames.  This is a best effort approach, and remains probably
 very fragile."
   :global t
+  :group 'sway
   (if sway-socket-tracker-mode
       (add-hook 'after-make-frame-functions 'sway--socket-tracker)
     (remove-hook 'after-make-frame-functions 'sway--socket-tracker)))
@@ -373,29 +357,67 @@ very fragile."
 
 Used internally by `sway-x-focus-through-sway-mode.")
 
-
 (defun sway--x-focus-frame (frame &optional noactivate)
   "Drop-in replacement for `sway-focus-frame', which see.
 
 FRAME is the frame to focus, NOACTIVATE is currently ignored.
 
-If FRAME isn't managed by the Sway instance we have access to,
-run `sway--real-x-focus-frame', which should be the real
-`x-focus-frame'."
+If FRAME isn't managed by the Sway instance we have access to, we
+forward the arguments to function `sway--real-x-focus-frame',
+which should be the real `x-focus-frame'."
   (if-let ((win (sway-find-frame-window frame)))
       (sway-focus-container win)
-    (sway--real-x-focus-frame frame noactivate)))
+    (when (fboundp 'sway--real-x-focus-frame)
+      (sway--real-x-focus-frame frame noactivate))))
 
+;;;###autoload
 (define-minor-mode sway-x-focus-through-sway-mode
   "Temporary fix/workaround for Sway bug #6216.
 
 Replace `x-focus-frame' with an implementation that delegates to
 `sway-focus-container'."
   :global t
+  :group 'sway
   (if sway-x-focus-through-sway-mode
       (progn
         (fset 'sway--real-x-focus-frame (symbol-function 'x-focus-frame))
         (fset 'x-focus-frame (symbol-function 'sway--x-focus-frame)))
     (fset 'x-focus-frame (symbol-function 'sway--real-x-focus-frame))))
+
+;;;; Shackle integration
+
+;;;###autoload
+(defun sway-shackle-display-buffer-frame (buffer &optional _alist plist)
+  "Show BUFFER in an Emacs frame, creating it if needed.
+
+_ALIST is ignored, PLIST as in Shackle."
+  (let* ((tree (sway-tree))
+         (old-frame (sway-find-frame-window (selected-frame) tree))
+         (sway (sway-find-frame-for-buffer buffer tree t))
+         (frame (or (car sway)
+                    (funcall pop-up-frame-function))))
+
+    ;; Display buffer if frame doesn't already.
+    (if (sway-frame-displays-buffer-p frame buffer)
+        ;; Select existing window
+        (set-frame-selected-window frame (get-buffer-window buffer frame))
+      ;; Show buffer in current window
+      (set-window-buffer (frame-selected-window frame) buffer))
+
+    ;; (message "buffer=%s\nalist=%s\nplist=%s" buffer alist plist)
+
+    ;; Give focus back to previous window.
+    (sway-focus-container old-frame)
+
+    ;; Mark as killable for undertaker mode
+    (when (and sway-undertaker-mode
+               (plist-get plist :dedicate)
+               (not sway))
+      (set-frame-parameter frame 'sway-dedicated buffer))
+
+    ;; Return the window displaying buffer.
+    (frame-selected-window frame)))
+;;(let ((process-environment (frame-parameter frame 'environment)))
+;;(call-process sway-swaymsg-binary nil nil nil (format sway-focus-message-format focused))))
 
 ;;; sway.el ends here
