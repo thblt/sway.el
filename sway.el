@@ -5,7 +5,7 @@
 ;; Author: Thibault Polge <thibault@thb.lt>
 ;; Maintainer: Thibault Polge <thibault@thb.lt>
 ;;
-;; Keywords: convenience
+;; Keywords: frames
 ;; Homepage: https://github.com/thblt/sway.el
 ;; Version: 0.2.1
 ;; Package-Requires: ((emacs "27.1"))
