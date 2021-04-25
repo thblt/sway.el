@@ -7,7 +7,7 @@
 ;;
 ;; Keywords: frames
 ;; Homepage: https://github.com/thblt/sway.el
-;; Version: 0.2.1
+;; Version: 0.2.2
 ;; Package-Requires: ((emacs "27.1") (dash "2.18.1"))
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -72,8 +72,8 @@ This isn't easy, because:
    created from existing client frames, eg with
    \\[make-frame-command] (this is bug #47806).  This is why we
    have the command `sway-socket-tracker-mode'."
-  (or (frame-parameter nil 'sway-socket)
-      (getenv "SWAYSOCK" (selected-frame))
+  (or (getenv "SWAYSOCK" (selected-frame))
+      (frame-parameter nil 'sway-socket)
       (getenv "SWAYSOCK")))
 
 (defun sway-json-parse-buffer ()
