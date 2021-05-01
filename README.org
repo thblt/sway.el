@@ -1,5 +1,8 @@
 #+TITLE: Sway ❤ Emacs
 
+[[https://melpa.org/#/sway][file:https://melpa.org/packages/sway-badge.svg]]
+[[http://stable.melpa.org/#/sway][file:http://stable.melpa.org/packages/sway-badge.svg]]
+
 This package provides a partial interface for integrating Sway with
 Emacs.  It is meant for those Emacs users who prefer to let their
 window manager deal with window management, and is designed to play
