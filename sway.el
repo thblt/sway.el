@@ -7,7 +7,7 @@
 ;;
 ;; Keywords: frames
 ;; Homepage: https://github.com/thblt/sway.el
-;; Version: 0.2.3
+;; Version: 0.2.4
 ;; Package-Requires: ((emacs "27.1") (dash "2.18.1"))
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -315,7 +315,7 @@ or a window not displaying the buffer it's sway-dedicated to."
   (if sway-undertaker-mode
       ;; Install
       (add-hook 'window-configuration-change-hook #'sway--undertaker)
-    (remove-hook 'window-configuration-change-hook #'sway-undertaker-protect)))
+    (remove-hook 'window-configuration-change-hook #'sway--undertaker)))
 
 ;;;; Tracking minor mode
 
