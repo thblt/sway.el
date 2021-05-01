@@ -7,7 +7,7 @@
 ;;
 ;; Keywords: frames
 ;; Homepage: https://github.com/thblt/sway.el
-;; Version: 0.2.2
+;; Version: 0.2.3
 ;; Package-Requires: ((emacs "27.1") (dash "2.18.1"))
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -247,8 +247,8 @@ Return value is a list of (FRAME-OBJECT . SWAY-ID)"
   (let* ((wins (sway-list-windows tree visible-only focused-only)))
     (seq-filter (lambda (x) (car x))
                 (-zip
-                 (mapcar 'sway-find-x-window-frame wins)
-                 (mapcar 'sway-get-id wins)))))
+                 (mapcar #'sway-find-x-window-frame wins)
+                 (mapcar #'sway-get-id wins)))))
 
 (defun sway-frame-displays-buffer-p (frame buffer)
   "Determine if FRAME displays BUFFER."
@@ -314,8 +314,8 @@ or a window not displaying the buffer it's sway-dedicated to."
   :group 'sway
   (if sway-undertaker-mode
       ;; Install
-      (add-hook 'window-configuration-change-hook 'sway--undertaker)
-    (remove-hook 'window-configuration-change-hook 'sway-undertaker-protect)))
+      (add-hook 'window-configuration-change-hook #'sway--undertaker)
+    (remove-hook 'window-configuration-change-hook #'sway-undertaker-protect)))
 
 ;;;; Tracking minor mode
 
@@ -340,8 +340,8 @@ very fragile."
   :global t
   :group 'sway
   (if sway-socket-tracker-mode
-      (add-hook 'after-make-frame-functions 'sway--socket-tracker)
-    (remove-hook 'after-make-frame-functions 'sway--socket-tracker)))
+      (add-hook 'after-make-frame-functions #'sway--socket-tracker)
+    (remove-hook 'after-make-frame-functions #'sway--socket-tracker)))
 
 (provide 'sway)
 
