@@ -7,7 +7,7 @@
 ;;
 ;; Keywords: frames
 ;; Homepage: https://github.com/thblt/sway.el
-;; Version: 0.2.4
+;; Version: 0.3
 ;; Package-Requires: ((emacs "27.1") (dash "2.18.1"))
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -60,6 +60,13 @@
   :type 'string
   :group 'sway)
 
+(defun sway--validate-socket (candidate)
+  "Return CANDIDATE iff it's non nil and is a readable file."
+  (and candidate
+       (file-readable-p candidate)
+       (not (file-directory-p candidate))
+       candidate))
+
 (defun sway-find-socket ()
   "A non-subtle attempt to find the path to the Sway socket.
 
@@ -72,9 +79,10 @@ This isn't easy, because:
    created from existing client frames, eg with
    \\[make-frame-command] (this is bug #47806).  This is why we
    have the command `sway-socket-tracker-mode'."
-  (or (getenv "SWAYSOCK" (selected-frame))
-      (frame-parameter nil 'sway-socket)
-      (getenv "SWAYSOCK")))
+  (or (sway--validate-socket (getenv "SWAYSOCK" (selected-frame)))
+      (sway--validate-socket (frame-parameter nil 'sway-socket))
+      (sway--validate-socket (getenv "SWAYSOCK"))
+      (error "Cannot find a valid Sway socket.")))
 
 (defun sway-json-parse-buffer ()
   "Parse current buffer as JSON, from point.
