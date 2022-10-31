@@ -80,6 +80,11 @@ This isn't easy, because:
    \\[make-frame-command] (this is bug #47806).  This is why we
    have the command `sway-socket-tracker-mode'."
   (or (sway--validate-socket (getenv "SWAYSOCK" (selected-frame)))
+      ;; Note to self: on a never-pushed commit, I had an extra test:
+      ;; (when (frame-parameter nil 'environment)
+      ;; (getenv "SWAYSOCK" (selected-frame))))
+      ;; which was probably made useless by the introduction of
+      ;; `sway--validate-socket'.
       (sway--validate-socket (frame-parameter nil 'sway-socket))
       (sway--validate-socket (getenv "SWAYSOCK"))
       (error "Cannot find a valid Sway socket.")))
