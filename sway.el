@@ -75,10 +75,10 @@ This isn't easy, because:
    daemon's $SWAYSOCK can be obsolete.
  - But, lucky for us, client frames get a copy on the client's
    environment as a frame parameter!
- - But, stupid Emacs don't copy parameter copy on new frames
+ - But, stupid Emacs doesn't copy that parameter on new frames
    created from existing client frames, eg with
    \\[make-frame-command] (this is bug #47806).  This is why we
-   have the command `sway-socket-tracker-mode'."
+   have `sway-socket-tracker-mode'."
   (or (sway--validate-socket (getenv "SWAYSOCK" (selected-frame)))
       ;; Note to self: on a never-pushed commit, I had an extra test:
       ;; (when (frame-parameter nil 'environment)
@@ -102,8 +102,8 @@ reasonably consistent."
 If HANDLER is a buffer, output is added to it.
 
 If HANDLER is a function, output is written to a temporary
-  buffer, then function is run on that buffer with point at the
-  beginning and its result is returned.
+buffer, then function is run on that buffer with point at the
+beginning and its result is returned.
 
 Otherwise, output is dropped."
   (let ((buffer (or
@@ -403,7 +403,8 @@ Replace `x-focus-frame' with an implementation that delegates to
 (defun sway-shackle-display-buffer-frame (buffer &optional _alist plist)
   "Show BUFFER in an Emacs frame, creating it if needed.
 
-_ALIST is ignored, PLIST as in Shackle."
+_ALIST is ignored, PLIST as in Shackle; also accepts a :dedicate
+argument for the undertaker.."
   (let* ((tree (sway-tree))
          (old-frame (sway-find-frame-window (selected-frame) tree))
          (sway (sway-find-frame-for-buffer buffer tree t))
