@@ -6,11 +6,15 @@
 This package provides a partial interface for integrating Sway with
 Emacs.  It is meant for those Emacs users who prefer to let their
 window manager deal with window management, and is designed to play
-well with [[https://depp.brause.cc/shackle/][Shackle]].
+well with [[https://depp.brause.cc/shackle/][Shackle]], but it should work with other popup managers just
+as well.
 
-Its only directly usable feature right now is the
+Support for pgtk Emacs is currently experimental and partially broken.
+It's being tracked [[https://github.com/thblt/sway.el/issues/3][here]].
+
+The only directly usable feature right now is the
 =sway-shackle-display-buffer-frame=, which either creates a new frame
-with a given buffer or focus that buffer in the frame it's already
+with a given buffer or focuses that buffer in the frame it's already
 displayed on.  A reasonable default config with Shackle could look
 like:
 
