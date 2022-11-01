@@ -217,6 +217,8 @@ ID is a Sway ID.  NOERROR is as in `sway-do', which see."
 (defun sway-find-x-window-frame (window)
   "Return the Emacs frame corresponding to Window, an X-Window ID.
 
+You probably should use `sway-find-window-frame' instead.
+
 Notice WINDOW is NOT a Sway ID, but a X id or a Sway tree objet.
 If the latter, it most be the window node of a a tree
 
@@ -231,6 +233,32 @@ the X id is the only value available from both."
                     (eq window (string-to-number owi))
                     frame)))
            (frame-list)))
+
+(defun sway-find-wayland-window-frame (window)
+  "Return the Emacs frame corresponding to a Sway window WINDOW.
+
+You probably should use `sway-find-window-frame' instead.
+
+WINDOW is a hash table, typically one of the members of
+`sway-list-windows'."
+  ;;; @FIXME This works by matching frame names, so we really should
+  ;;; rename all frames to unique names (something like
+  ;;; EMACS-PID-SOMEID-SOME RANDOMISH STRING) before processing, and
+  ;;; restore them later.
+  (require 'map)
+  (let ((name (map-elt window "name")))
+    (--find (equal (frame-parameter it 'name) name)
+            (frame-list))))
+
+(defun sway-find-window-frame (window)
+  "Return the Emacs frame corresponding to a Sway window WINDOW.
+
+This is a dispatcher function, it delegates to
+`sway-find-x-window-frame' or `sway-find-wayland-window-frame'
+depending on whether Emacs is built with pgtk."
+  (if (eq window-system 'pgtk)
+      (sway-find-wayland-window-frame window)
+    (sway-find-x-window-frame window)))
 
 (defun sway-find-frame-window (frame &optional tree)
   "Return the sway window id corresponding to FRAME.
@@ -260,7 +288,7 @@ Return value is a list of (FRAME-OBJECT . SWAY-ID)"
   (let* ((wins (sway-list-windows tree visible-only focused-only)))
     (seq-filter (lambda (x) (car x))
                 (-zip
-                 (mapcar #'sway-find-x-window-frame wins)
+                 (mapcar #'sway-find-window-frame wins)
                  (mapcar #'sway-get-id wins)))))
 
 (defun sway-frame-displays-buffer-p (frame buffer)
