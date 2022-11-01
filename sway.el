@@ -165,20 +165,19 @@ annotate the error output."
 
 ;;;; Sway interaction
 
-
-
 (defun sway-tree ()
   "Get the Sway tree as an elisp object."
   (with-temp-buffer
     (sway-msg 'sway-json-parse-buffer "-tget_tree")))
 
-(defun sway-list-windows (&optional tree visible-only focused-only)
+(defun sway-list-windows (&optional tree visible-only focused-only ours-only)
   "Return all windows in Sway tree TREE.
 
 If TREE is nil, get it from `sway-tree'.
 
 If VISIBLE-ONLY, only select visible windows.
-If FOCUSED-ONLY, only select the focused window."
+If FOCUSED-ONLY, only select the focused window.
+If OURS-ONLY, only select windows matching this emacs' PID."
   ;; @TODO What this actually does is list terminal containers that
   ;; aren't workspaces.  The latter criterion is to eliminate
   ;; __i3_scratch, which is a potentially empty workspace.  It works,
@@ -189,12 +188,16 @@ If FOCUSED-ONLY, only select the focused window."
     (if (and
          (zerop (length next-tree))
          (not (string= "workspace" (gethash "type" tree)))
+         (if ours-only (eq
+                        (gethash "pid" tree)
+                        (emacs-pid))
+           t)
          (if visible-only (gethash "visible" tree) t)
          (if focused-only (gethash "focused" tree) t))
         tree ; Collect
       (-flatten ; Or recurse
        (mapcar
-        (lambda (t2) (sway-list-windows t2 visible-only focused-only))
+        (lambda (t2) (sway-list-windows t2 visible-only focused-only ours-only))
         next-tree)))))
 
 (defun sway-version ()
@@ -280,16 +283,15 @@ Use TREE if non-nil, otherwise call (sway-tree)."
 (defun sway-list-frames (&optional tree visible-only focused-only)
   "List all Emacs frames in TREE.
 
-VISIBLE-ONLY and FOCUSED-ONLY select only frames that are,
+VISIBLE-ONLY and FOCUSED-ONLY selects only frames that are,
 respectively, visible and focused.
 
 Return value is a list of (FRAME-OBJECT . SWAY-ID)"
   (unless tree (setq tree (sway-tree)))
-  (let* ((wins (sway-list-windows tree visible-only focused-only)))
-    (seq-filter (lambda (x) (car x))
-                (-zip
-                 (mapcar #'sway-find-window-frame wins)
-                 (mapcar #'sway-get-id wins)))))
+  (let* ((wins (sway-list-windows tree visible-only focused-only t)))
+    (-zip
+     (mapcar #'sway-find-window-frame wins)
+     (mapcar #'sway-get-id wins))))
 
 (defun sway-frame-displays-buffer-p (frame buffer)
   "Determine if FRAME displays BUFFER."
@@ -297,7 +299,9 @@ Return value is a list of (FRAME-OBJECT . SWAY-ID)"
    (lambda (w) (eq (window-buffer w) buffer))
    (window-list frame nil)))
 
-(defun sway-find-frame-for-buffer (buffer &optional tree visible-only focused-only)
+(defun sway-find-frame-for-buffer (buffer
+                                   &optional
+                                   tree visible-only focused-only)
   "Find which frame displays BUFFER.
 
 TREE, VISIBLE-ONLY, FOCUSED-ONLY and return value are as in
