@@ -9,14 +9,14 @@ window manager deal with window management, and is designed to play
 well with [[https://depp.brause.cc/shackle/][Shackle]], but it should work with other popup managers just
 as well.
 
-Support for pgtk Emacs is currently experimental and partially broken.
-It's being tracked [[https://github.com/thblt/sway.el/issues/3][here]].
+*Usage with pgtk Emacs require an extra bit of configuration,
+see the config example below.*
 
-The only directly usable feature right now is the
-=sway-shackle-display-buffer-frame=, which either creates a new frame
-with a given buffer or focuses that buffer in the frame it's already
-displayed on.  A reasonable default config with Shackle could look
-like:
+The only directly usable feature as of now is the
+=sway-shackle-display-buffer-frame= function, which either creates a
+new frame with a given buffer or focuses that buffer in the frame it's
+already displayed on.  A reasonable default config with Shackle could
+look like:
 
 #+begin_src elisp
   (setq shackle-default-rule '(:frame t)
@@ -25,6 +25,14 @@ like:
   (sway-socket-tracker-mode)
   (sway-undertaker-mode) ;; If you want to use :dedicate, read below.
   (sway-x-focus-through-sway-mode) ;; Temporary workaround for Sway bug 6216
+
+  ;; To use with pgtk Emacs, you *must* ensure that frame names are
+  ;; unique.  This is a way to achieve this:
+  (setq frame-title-format '("%b — GNU Emacs [" (:eval (frame-parameter (selected-frame) 'window-id)) "]"))
+  ;; You may want to make this nicer, feel free to improve.  The only
+  ;; requirement is that each frame must have a strictly unique name on
+  ;; that Emacs instance (name collisions with other programs, including
+  ;; other Emacs processes, are not an issue )
 #+end_src
 
 * Extension to Shackle

@@ -217,48 +217,6 @@ ID is a Sway ID.  NOERROR is as in `sway-do', which see."
 
 ;;;; Windows and frames manipulation
 
-(defun sway--mark-frames ()
-  "Uniquify frame names.
-
-This renames all frames in that Emacs to a name generated from
- `sway--frame-mark-format'."
-  (mapc
-   (lambda (it)
-     ;; Preserve already saved names.
-     (unless (frame-parameter it 'sway--saved-name)
-       ;; Save the frame name
-       (set-frame-parameter it 'sway--saved-name
-                            (frame-parameter it 'name)))
-     (set-frame-parameter it 'name (frame-parameter it 'window-id)))
-   (frame-list)))
-
-(defun sway--unmark-frames ()
-  "Restore frame names that may have been modified by `sway--mark-frames'."
-  ;;; @FIXME I'm not sure how Emacs names frames based on the buffer
-  ;;; of the active window, but this *may* cause issue if we modify
-  ;;; window structure while marked.
-  (mapc
-   (lambda (it)
-     (when (frame-parameter it 'sway--saved-name)
-       (set-frame-parameter it 'name
-                            (let ((name (frame-parameter it 'sway--saved-name)))
-                              ;; We can't restore names of the form
-                              ;; F<number>, see frame.c:3080: error
-                              ;; ("Frame names of the form F<num> are
-                              ;; usurped by Emacs");
-                              (unless (string-match "^F[[:digit:]]*$" name)
-                                name)))
-
-       (set-frame-parameter it 'sway--saved-name nil)))
-   (frame-list)))
-
-(defmacro sway-with-marked-frames (&rest body)
-  "Execute BODY with uniquified frame names."
-  `(prog2
-       (sway--mark-frames)
-       ,@body
-     (sway--unmark-frames)))
-
 (defun sway-find-x-window-frame (window)
   "Return the Emacs frame corresponding to Window, an X-Window ID.
 
@@ -286,10 +244,9 @@ You probably should use `sway-find-window-frame' instead.
 
 WINDOW is a hash table, typically one of the members of
 `sway-list-windows'."
-  (sway-with-marked-frames
-   (let ((name (gethash "name" window)))
-     (--find (equal (frame-parameter it 'name) name)
-             (frame-list)))))
+  (let ((name (gethash "name" window)))
+    (--find (equal (frame-parameter it 'name) name)
+            (frame-list))))
 
 (defun sway-find-window-frame (window)
   "Return the Emacs frame corresponding to a Sway window WINDOW.
