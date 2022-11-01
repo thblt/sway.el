@@ -319,9 +319,11 @@ TREE, VISIBLE-ONLY, FOCUSED-ONLY and return value are as in
 (defvar sway-undertaker-killer-commands
   (list 'bury-buffer
         'cvs-bury-buffer
+        'forge-post-cancel
         'magit-log-bury-buffer
         'magit-mode-bury-buffer
-        'quit-window)
+        'quit-window
+        'with-editor-cancel)
   "Commands the interpreter should interpret as a request to kill a frame.")
 
 (defun sway--undertaker (&optional frame)
@@ -454,6 +456,7 @@ argument for the undertaker.."
     (when (and sway-undertaker-mode
                (plist-get plist :dedicate)
                (not sway))
+
       (set-frame-parameter frame 'sway-dedicated buffer))
 
     ;; Return the window displaying buffer.
