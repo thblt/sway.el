@@ -1,13 +1,13 @@
 ;;; sway.el --- Communication with the Sway window manager  -*- lexical-binding: t; coding: utf-8 -*-
 
-;; Copyright (c) 2020-2021 Thibault Polge <thibault@thb.lt>
+;; Copyright (c) 2020-2022 Thibault Polge <thibault@thb.lt>
 
 ;; Author: Thibault Polge <thibault@thb.lt>
 ;; Maintainer: Thibault Polge <thibault@thb.lt>
 ;;
 ;; Keywords: frames
 ;; Homepage: https://github.com/thblt/sway.el
-;; Version: 0.3
+;; Version: 0.4
 ;; Package-Requires: ((emacs "27.1") (dash "2.18.1"))
 
 ;; This program is free software; you can redistribute it and/or modify
