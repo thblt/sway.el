@@ -277,7 +277,7 @@ Use TREE if non-nil, otherwise call (sway-tree)."
    (sway-list-frames tree)))
 
 (defun sway-get-id (tree)
-  "Return the 'id' field of TREE, a hash table."
+  "Return the `id' field of TREE, a hash table."
   (gethash "id" tree))
 
 (defun sway-list-frames (&optional tree visible-only focused-only)
