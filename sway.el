@@ -7,7 +7,7 @@
 ;;
 ;; Keywords: frames
 ;; Homepage: https://github.com/thblt/sway.el
-;; Version: 0.4
+;; Version: 0.5
 ;; Package-Requires: ((emacs "27.1") (dash "2.18.1"))
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -244,6 +244,11 @@ You probably should use `sway-find-window-frame' instead.
 
 WINDOW is a hash table, typically one of the members of
 `sway-list-windows'."
+  ;; A quick sanity check.
+  (let ((names (seq-map (lambda (frame) (frame-parameter frame 'name)) (frame-list))))
+    (unless (eq (length names) (length (seq-uniq names)))
+      (error "sway.el under pgtk needs frame name to be unique.  Please see README.org.")))
+  ;; Then
   (let ((name (gethash "name" window)))
     (--find (equal (frame-parameter it 'name) name)
             (frame-list))))
