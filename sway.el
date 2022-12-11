@@ -248,7 +248,7 @@ WINDOW is a hash table, typically one of the members of
   (let ((names (seq-map (lambda (frame) (frame-parameter frame 'name))
                         (seq-filter (lambda (f)
                                       (null (frame-parameter f 'parent-frame)))
-                                    (frame-list))))
+                                    (frame-list)))))
     (unless (eq (length names) (length (seq-uniq names)))
       (error "sway.el under pgtk needs frame name to be unique.  Please see README.org.")))
   ;; Then
