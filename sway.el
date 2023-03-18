@@ -1,6 +1,7 @@
 ;;; sway.el --- Communication with the Sway window manager  -*- lexical-binding: t; coding: utf-8 -*-
 
 ;; Copyright (c) 2020-2022 Thibault Polge <thibault@thb.lt>
+;; Copyright (c) 2023 Nicolas Graves <ngraves@ngraves.fr>
 
 ;; Author: Thibault Polge <thibault@thb.lt>
 ;; Maintainer: Thibault Polge <thibault@thb.lt>
@@ -87,7 +88,7 @@ This isn't easy, because:
       ;; `sway--validate-socket'.
       (sway--validate-socket (frame-parameter nil 'sway-socket))
       (sway--validate-socket (getenv "SWAYSOCK"))
-      (error "Cannot find a valid Sway socket.")))
+      (error "Cannot find a valid Sway socket")))
 
 (defun sway-json-parse-buffer ()
   "Parse current buffer as JSON, from point.
@@ -177,7 +178,7 @@ If TREE is nil, get it from `sway-tree'.
 
 If VISIBLE-ONLY, only select visible windows.
 If FOCUSED-ONLY, only select the focused window.
-If OURS-ONLY, only select windows matching this emacs' PID."
+If OURS-ONLY, only select windows matching this Emacs' PID."
   ;; @TODO What this actually does is list terminal containers that
   ;; aren't workspaces.  The latter criterion is to eliminate
   ;; __i3_scratch, which is a potentially empty workspace.  It works,
@@ -250,7 +251,7 @@ WINDOW is a hash table, typically one of the members of
                                       (null (frame-parameter f 'parent-frame)))
                                     (frame-list)))))
     (unless (eq (length names) (length (seq-uniq names)))
-      (error "sway.el under pgtk needs frame name to be unique.  Please see README.org.")))
+      (error "Sway.el under pgtk needs frame name to be unique.  Please see README.org")))
   ;; Then
   (let ((name (gethash "name" window)))
     (--find (equal (frame-parameter it 'name) name)
