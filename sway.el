@@ -248,6 +248,14 @@ See `sway-act-window-interactive' for arguments PREDKEY and PRED."
   (interactive)
   (sway-act-window-interactive "focus" predkey pred))
 
+;;;###autoload
+(defun sway-kill-window-interactive (&optional predkey pred)
+  "Interactively kill Sway window by title.
+
+See `sway-act-window-interactive' for arguments PREDKEY and PRED."
+  (interactive)
+  (sway-act-window-interactive "kill" predkey pred))
+
 ;;;; Windows and frames manipulation
 
 (defun sway-find-x-window-frame (window)
