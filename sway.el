@@ -255,6 +255,14 @@ See `sway-act-window-interactive' for arguments PREDKEY and PRED."
   (interactive)
   (sway-act-window-interactive "kill" predkey pred))
 
+;;;###autoload
+(defun sway-move-window-to-scratchpad-interactive (&optional predkey pred)
+  "Interactively move Sway window to scratchpad by title.
+
+See `sway-act-window-interactive' for arguments PREDKEY and PRED."
+  (interactive)
+  (sway-act-window-interactive "move to scratchpad" predkey pred))
+
 ;;;; Windows and frames manipulation
 
 (defun sway-find-x-window-frame (window)
