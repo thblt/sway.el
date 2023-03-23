@@ -216,6 +216,17 @@ If OURS-ONLY, only select windows matching this Emacs' PID."
 ID is a Sway ID.  NOERROR is as in `sway-do', which see."
   (sway-do (format "[con_id=%s] focus;" id) noerror))
 
+;;;###autoload
+(defun sway-focus-window-interactive ()
+  "Interactively focus Sway window by title."
+  (interactive)
+  (let* ((candidates (mapcar
+                      (lambda (x) (list (gethash "name" x)
+                                        (gethash "id" x)))
+                      (sway-list-windows)))
+         (selected (completing-read "Select window:" candidates)))
+    (sway-focus-container (cadr (assoc selected candidates)))))
+
 ;;;; Windows and frames manipulation
 
 (defun sway-find-x-window-frame (window)
