@@ -217,15 +217,28 @@ ID is a Sway ID.  NOERROR is as in `sway-do', which see."
   (sway-do (format "[con_id=%s] focus;" id) noerror))
 
 ;;;###autoload
-(defun sway-focus-window-interactive ()
-  "Interactively focus Sway window by title."
+(defun sway-focus-window-interactive (&optional predkey pred)
+  "Interactively focus Sway window by title.
+
+If the key PREDKEY is given, filter the Sway node `completing-read'
+candidates with the predicate PRED, which takes the value of the
+PREDKEY as an argument."
   (interactive)
   (let* ((candidates (mapcar
-                      (lambda (x) (list (gethash "name" x)
-                                        (gethash "id" x)))
+                      (lambda (x) (cons (list (gethash "name" x)
+                                              (gethash "id" x))
+                                        (if predkey
+                                            (gethash predkey x)
+                                          nil)))
                       (sway-list-windows)))
-         (selected (completing-read "Select window:" candidates)))
-    (sway-focus-container (cadr (assoc selected candidates)))))
+         (filtered (if predkey
+                       (mapcar 'car
+                               (map-filter
+                                (lambda (_ val) (funcall pred val))
+                                candidates))
+                     candidates))
+         (selected (completing-read "Select window:" filtered)))
+    (sway-focus-container (cadr (assoc selected filtered)))))
 
 ;;;; Windows and frames manipulation
 
