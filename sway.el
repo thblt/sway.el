@@ -8,7 +8,7 @@
 ;; Keywords: frames
 ;; Homepage: https://github.com/thblt/sway.el
 ;; Version: 0.6.2
-;; Package-Requires: ((emacs "27.1") (dash "2.18.1"))
+;; Package-Requires: ((emacs "27.1"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -35,7 +35,6 @@
 
 ;;; Code:
 
-(require 'dash)
 (require 'json)
 
 ;; * General notes
@@ -195,7 +194,7 @@ If OURS-ONLY, only select windows matching this emacs' PID."
          (if visible-only (gethash "visible" tree) t)
          (if focused-only (gethash "focused" tree) t))
         tree ; Collect
-      (-flatten ; Or recurse
+      (flatten-tree
        (mapcar
         (lambda (t2) (sway-list-windows t2 visible-only focused-only ours-only))
         next-tree)))))
@@ -253,7 +252,7 @@ WINDOW is a hash table, typically one of the members of
       (error "sway.el under pgtk needs frame name to be unique.  Please see README.org.")))
   ;; Then
   (let ((name (gethash "name" window)))
-    (--find (equal (frame-parameter it 'name) name)
+    (seq-find (lambda (it) (equal (frame-parameter it 'name) name))
             (frame-list))))
 
 (defun sway-find-window-frame (window)
@@ -292,9 +291,10 @@ respectively, visible and focused.
 Return value is a list of (FRAME-OBJECT . SWAY-ID)"
   (unless tree (setq tree (sway-tree)))
   (let* ((wins (sway-list-windows tree visible-only focused-only t)))
-    (-zip
-     (mapcar #'sway-find-window-frame wins)
-     (mapcar #'sway-get-id wins))))
+    (mapcar (lambda (win)
+              (cons (sway-find-window-frame win)
+                    (sway-get-id win)))
+            wins)))
 
 (defun sway-frame-displays-buffer-p (frame buffer)
   "Determine if FRAME displays BUFFER."
