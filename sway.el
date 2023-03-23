@@ -210,15 +210,15 @@ If OURS-ONLY, only select windows matching this Emacs' PID."
 
 ;;;; Focus control
 
-(defun sway-focus-container (id &optional noerror)
-  "Focus Sway container ID.
+(defun sway-act-container (id action &optional noerror)
+  "Perform ACTION on Sway container ID.
 
-ID is a Sway ID.  NOERROR is as in `sway-do', which see."
-  (sway-do (format "[con_id=%s] focus;" id) noerror))
+ID is a Sway ID.  ACTION can be focus or kill.  NOERROR is as in
+`sway-do', which see."
+  (sway-do (format "[con_id=%s] %s;" id action) noerror))
 
-;;;###autoload
-(defun sway-focus-window-interactive (&optional predkey pred)
-  "Interactively focus Sway window by title.
+(defun sway-act-window-interactive (action &optional predkey pred)
+  "Interactively perform ACTION on Sway window by title.
 
 If the key PREDKEY is given, filter the Sway node `completing-read'
 candidates with the predicate PRED, which takes the value of the
@@ -238,7 +238,15 @@ PREDKEY as an argument."
                                 candidates))
                      candidates))
          (selected (completing-read "Select window:" filtered)))
-    (sway-focus-container (cadr (assoc selected filtered)))))
+    (sway-act-container (cadr (assoc selected filtered)) action)))
+
+;;;###autoload
+(defun sway-focus-window-interactive (&optional predkey pred)
+  "Interactively focus Sway window by title.
+
+See `sway-act-window-interactive' for arguments PREDKEY and PRED."
+  (interactive)
+  (sway-act-window-interactive "focus" predkey pred))
 
 ;;;; Windows and frames manipulation
 
@@ -425,7 +433,7 @@ very fragile."
 ;; This mode is a temporary fix/workaround for
 ;; https://github.com/swaywm/sway/issues/6216.  It replaces
 ;; `x-focus-frame' with an implementation that
-;; delegates to `sway-focus-container'.
+;; delegates to `sway-act-container'.
 
 (defvar sway--real-x-focus-frame nil
   "The “real” `x-focus-frame' function.
@@ -441,7 +449,7 @@ If FRAME isn't managed by the Sway instance we have access to, we
 forward the arguments to function `sway--real-x-focus-frame',
 which should be the real `x-focus-frame'."
   (if-let ((win (sway-find-frame-window frame)))
-      (sway-focus-container win)
+      (sway-act-container win "focus")
     (when (fboundp 'sway--real-x-focus-frame)
       (sway--real-x-focus-frame frame noactivate))))
 
@@ -450,7 +458,7 @@ which should be the real `x-focus-frame'."
   "Temporary fix/workaround for Sway bug #6216.
 
 Replace `x-focus-frame' with an implementation that delegates to
-`sway-focus-container'."
+`sway-act-container'."
   :global t
   :group 'sway
   (if sway-x-focus-through-sway-mode
@@ -483,7 +491,7 @@ argument for the undertaker.."
     ;; (message "buffer=%s\nalist=%s\nplist=%s" buffer alist plist)
 
     ;; Give focus back to previous window.
-    (sway-focus-container old-frame)
+    (sway-act-container old-frame "focus")
 
     ;; Mark as killable for undertaker mode
     (when (and sway-undertaker-mode
