@@ -1,6 +1,6 @@
 ;;; sway.el --- Communication with the Sway window manager  -*- lexical-binding: t; coding: utf-8 -*-
 
-;; Copyright (c) 2020-2022 Thibault Polge <thibault@thb.lt>
+;; Copyright (c) 2020-2023 Thibault Polge <thibault@thb.lt>
 ;; Copyright (c) 2023 Nicolas Graves <ngraves@ngraves.fr>
 
 ;; Author: Thibault Polge <thibault@thb.lt>
@@ -442,8 +442,6 @@ very fragile."
       (add-hook 'after-make-frame-functions #'sway--socket-tracker)
     (remove-hook 'after-make-frame-functions #'sway--socket-tracker)))
 
-(provide 'sway)
-
 ;;;; Focus command replacement
 
 ;; This mode is a temporary fix/workaround for
@@ -520,5 +518,7 @@ argument for the undertaker.."
     (frame-selected-window frame)))
 ;;(let ((process-environment (frame-parameter frame 'environment)))
 ;;(call-process sway-swaymsg-binary nil nil nil (format sway-focus-message-format focused))))
+
+(provide 'sway)
 
 ;;; sway.el ends here
