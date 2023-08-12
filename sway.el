@@ -206,13 +206,23 @@ If OURS-ONLY, only select windows matching this Emacs' PID."
           (gethash "minor" json)
           (gethash "patch" json))))
 
-;;;; Focus control
+;;;; Actions on containers
 
 (defun sway-focus-container (id &optional noerror)
   "Focus Sway container ID.
 
 ID is a Sway ID.  NOERROR is as in `sway-do', which see."
+  (interactive (list
+                (sway--completing-read-container "Container to focus: " t)))
   (sway-do (format "[con_id=%s] focus;" id) noerror))
+
+(defun sway-kill-container (id &optional noerror)
+  "Kill Sway container ID.
+
+ID is a Sway ID.  NOERROR is as in `sway-do', which see."
+  (interactive (list
+                (sway--completing-read-container "Container to kill: " t)))
+  (sway-do (format "[con_id=%s] kill;" id) noerror))
 
 ;;;; Windows and frames manipulation
 
@@ -314,6 +324,27 @@ TREE, VISIBLE-ONLY, FOCUSED-ONLY and return value are as in
              (when (sway-frame-displays-buffer-p (car f) buffer)
                f))
            (sway-list-frames tree visible-only focused-only)))
+
+;;;; (Interactive) helpers
+
+(defun sway--completing-read-container (prompt &optional id-only)
+  "Prompt the user to pick a Sway container, and return its ID."
+  (let* ((windows (sway-list-windows))
+         ;; Alist of (formatted-window-name . hashtable)
+         (alist (mapcar (lambda (it)
+                        (cons
+                         (format "%s (%s)"
+                                 (gethash "name" it)
+                                 (gethash "id" it))
+                         it)) windows))
+         (choice (alist-get
+                  (completing-read prompt (mapcar 'car alist)) alist nil nil 'string=)))
+    (if id-only
+        (sway-get-id choice)
+      choice)))
+
+(sway-kill-container
+(sway--completing-read-container "Which?" 'id-only))
 
 ;;;; The Undertaker: A stupid mode to make it easier to kill frames on bury-buffer
 
