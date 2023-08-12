@@ -7,7 +7,7 @@
 ;;
 ;; Keywords: frames
 ;; Homepage: https://github.com/thblt/sway.el
-;; Version: 0.6.2
+;; Version: 0.6.3
 ;; Package-Requires: ((emacs "27.1"))
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -86,7 +86,7 @@ This isn't easy, because:
       ;; `sway--validate-socket'.
       (sway--validate-socket (frame-parameter nil 'sway-socket))
       (sway--validate-socket (getenv "SWAYSOCK"))
-      (error "Cannot find a valid Sway socket.")))
+      (error "Cannot find a valid Sway socket")))
 
 (defun sway-json-parse-buffer ()
   "Parse current buffer as JSON, from point.
@@ -176,7 +176,7 @@ If TREE is nil, get it from `sway-tree'.
 
 If VISIBLE-ONLY, only select visible windows.
 If FOCUSED-ONLY, only select the focused window.
-If OURS-ONLY, only select windows matching this emacs' PID."
+If OURS-ONLY, only select windows matching this Emacs' PID."
   ;; @TODO What this actually does is list terminal containers that
   ;; aren't workspaces.  The latter criterion is to eliminate
   ;; __i3_scratch, which is a potentially empty workspace.  It works,
@@ -249,7 +249,7 @@ WINDOW is a hash table, typically one of the members of
                                       (null (frame-parameter f 'parent-frame)))
                                     (frame-list)))))
     (unless (eq (length names) (length (seq-uniq names)))
-      (error "sway.el under pgtk needs frame name to be unique.  Please see README.org.")))
+      (error "Two Emacs frames share the same name, which breaks sway.el under pgtk.  Please see README.org")))
   ;; Then
   (let ((name (gethash "name" window)))
     (seq-find (lambda (it) (equal (frame-parameter it 'name) name))
