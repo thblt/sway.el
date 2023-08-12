@@ -149,7 +149,7 @@ MESSAGE is the message that was sent to Sway.  It is used to
 annotate the error output."
   (unless handler (setq handler 'identity))
 
-  (when (cl-some (lambda (rsp) (not (gethash "success" rsp))) response)
+  (when (seq-some (lambda (rsp) (not (gethash "success" rsp))) response)
     ;; We have an error.
     (funcall handler
              (concat
@@ -229,7 +229,7 @@ walking the tree to bridge Sway windows to frame objects, since
 the X id is the only value available from both."
   (when (hash-table-p window)
     (setq window (gethash "window" window)))
-  (cl-some (lambda (frame)
+  (seq-some (lambda (frame)
              (let ((owi (frame-parameter frame 'outer-window-id)))
                (and owi
                     (eq window (string-to-number owi))
@@ -272,7 +272,7 @@ FRAME is an Emacs frame object.
 
 Use TREE if non-nil, otherwise call (sway-tree)."
   (unless tree (setq tree (sway-tree)))
-  (cl-some
+  (seq-some
    (lambda (f)
      (when (eq frame (car f))
        (cdr f)))
@@ -298,7 +298,7 @@ Return value is a list of (FRAME-OBJECT . SWAY-ID)"
 
 (defun sway-frame-displays-buffer-p (frame buffer)
   "Determine if FRAME displays BUFFER."
-  (cl-some
+  (seq-some
    (lambda (w) (eq (window-buffer w) buffer))
    (window-list frame nil)))
 
@@ -310,7 +310,7 @@ Return value is a list of (FRAME-OBJECT . SWAY-ID)"
 TREE, VISIBLE-ONLY, FOCUSED-ONLY and return value are as in
 `sway-list-frames', which see."
   (unless tree (setq tree (sway-tree)))
-  (cl-some (lambda (f)
+  (seq-some (lambda (f)
              (when (sway-frame-displays-buffer-p (car f) buffer)
                f))
            (sway-list-frames tree visible-only focused-only)))
