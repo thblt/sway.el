@@ -329,23 +329,30 @@ TREE, VISIBLE-ONLY, FOCUSED-ONLY and return value are as in
 ;;;; (Interactive) helpers
 
 (defun sway--completing-read-container (prompt &optional id-only)
-  "Prompt the user to pick a Sway container, and return its ID."
+  "PROMPT the user to pick a Sway container, and return its ID.
+
+If ID-ONLY is nil of undefined, return the hashtable corresponding to
+the container."
   (let* ((windows (sway-list-windows))
          ;; Alist of (formatted-window-name . hashtable)
          (alist (mapcar (lambda (it)
-                        (cons
-                         (format "%s (%s)"
-                                 (gethash "name" it)
-                                 (gethash "id" it))
-                         it)) windows))
-         (choice (alist-get
-                  (completing-read prompt (mapcar 'car alist)) alist nil nil 'string=)))
+                          (cons
+                           (format "%s (%s)"
+                                   (gethash "name" it)
+                                   (gethash "id" it))
+                           it)) windows))
+         (selected (completing-read
+                    prompt
+                    ;; See (info "(elisp) Programmed completion")
+                    (lambda (string predicate action)
+                      (if (eq action 'metadata)
+                          `(metadata (category . sway-container))
+                        (complete-with-action
+                         action (mapcar 'car alist) string predicate)))))
+         (choice (alist-get selected alist nil nil 'string=)))
     (if id-only
         (sway-get-id choice)
       choice)))
-
-(sway-kill-container
-(sway--completing-read-container "Which?" 'id-only))
 
 ;;;; The Undertaker: A stupid mode to make it easier to kill frames on bury-buffer
 
@@ -502,6 +509,21 @@ argument for the undertaker.."
     (frame-selected-window frame)))
 ;;(let ((process-environment (frame-parameter frame 'environment)))
 ;;(call-process sway-swaymsg-binary nil nil nil (format sway-focus-message-format focused))))
+
+;;; Embark
+
+(defvar sway-container-embark-actions
+  (let ((map (make-sparse-keymap)))
+    (define-key map "k" #'sway-kill-container)
+    (define-key map "f" #'sway-focus-container)
+    map)
+  "Keymap for actions for Sway container items.")
+
+(defvar embark-keymap-alist)
+(with-eval-after-load 'embark
+  (add-to-list
+   'embark-keymap-alist
+   '(sway-container . sway-container-embark-actions)))
 
 (provide 'sway)
 
