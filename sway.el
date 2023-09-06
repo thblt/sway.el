@@ -329,6 +329,7 @@ TREE, VISIBLE-ONLY, FOCUSED-ONLY and return value are as in
         'cvs-bury-buffer
         'forge-post-cancel
         'magit-log-bury-buffer
+        'magit-log-select-pick
         'magit-mode-bury-buffer
         'quit-window
         'with-editor-cancel)
