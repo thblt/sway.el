@@ -7,8 +7,8 @@
 ;;
 ;; Keywords: frames
 ;; Homepage: https://github.com/thblt/sway.el
-;; Version: 0.6.3
-;; Package-Requires: ((emacs "27.1"))
+;; Version: 0.7
+;; Package-Requires: ((emacs "28.1"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -110,7 +110,8 @@ Otherwise, output is dropped."
                  (generate-new-buffer "*swaymsg*")))
         (process-environment (list (format "SWAYSOCK=%s" (sway-find-socket)))))
     (with-current-buffer buffer
-      (call-process sway-swaymsg-binary nil buffer nil message)
+      (with-existing-directory
+        (call-process sway-swaymsg-binary nil buffer nil message))
       (when (functionp handler)
         (prog2
             (goto-char (point-min))
