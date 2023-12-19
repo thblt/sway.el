@@ -519,7 +519,6 @@ argument for the undertaker.."
     map)
   "Keymap for actions for Sway container items.")
 
-(defvar embark-keymap-alist)
 (with-eval-after-load 'embark
   (add-to-list
    'embark-keymap-alist
